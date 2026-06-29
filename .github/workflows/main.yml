@@ -94,7 +94,7 @@ jobs:
           EOF
 
       # ------------------------------------------------------------
-      # 4. App build.gradle (fixed)
+      # 4. App build.gradle
       # ------------------------------------------------------------
       - name: Write app/build.gradle
         run: |
@@ -214,7 +214,7 @@ jobs:
           EOF
 
       # ------------------------------------------------------------
-      # 6. MainActivity.java (final, fully corrected)
+      # 6. MainActivity.java (API‑corrected)
       # ------------------------------------------------------------
       - name: Create Proguard Rules
         run: |
@@ -257,7 +257,6 @@ jobs:
           import org.mozilla.geckoview.GeckoSession;
           import org.mozilla.geckoview.GeckoSessionSettings;
           import org.mozilla.geckoview.GeckoView;
-          import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PermissionRequest;
 
           public class MainActivity extends AppCompatActivity {
               private static final String TARGET_URL = "https://arena.ai";
@@ -376,12 +375,16 @@ jobs:
                           .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE)
                           .userAgentOverride("Mozilla/5.0 (Android 5.1; Mobile; rv:109.0) Gecko/114.0 Firefox/114.0")
                           .allowJavascript(true)
-                          .fullZoom(true)  // enable full‑page zoom (no custom factor)
                           .build();
                   mSession = new GeckoSession(sessionSettings);
-                  mSession.getSettings().setUseTrackingProtection(false);
 
-                  // Attach session to view – this opens the session
+                  // Enable full-page zoom
+                  mSession.getSettings().setFullZoom(true);
+
+                  // Optionally adjust zoom factor (if needed) – but this version may not have setZoomFactor.
+                  // We'll skip custom zoom factor to avoid errors.
+
+                  // Attach session to view
                   mGeckoView.setSession(mSession);
 
                   // Permission delegate: auto‑allow desktop notifications
@@ -405,7 +408,7 @@ jobs:
                           mCurrentFilePrompt = prompt;
                           Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                           intent.addCategory(Intent.CATEGORY_OPENABLE);
-                          // Always allow multiple (ignored if not supported)
+                          // Always allow multiple – safe
                           intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                           try {
                               startActivityForResult(Intent.createChooser(intent, "Select Image"),
