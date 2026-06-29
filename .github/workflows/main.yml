@@ -214,7 +214,7 @@ jobs:
           EOF
 
       # ------------------------------------------------------------
-      # 6. MainActivity.java (API‑corrected)
+      # 6. MainActivity.java (fully corrected for GeckoView 115)
       # ------------------------------------------------------------
       - name: Create Proguard Rules
         run: |
@@ -375,27 +375,25 @@ jobs:
                           .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE)
                           .userAgentOverride("Mozilla/5.0 (Android 5.1; Mobile; rv:109.0) Gecko/114.0 Firefox/114.0")
                           .allowJavascript(true)
-                          .fullZoom(true)   // enable full‑page zoom
+                          .setFullZoom(true)  // enable full‑page zoom
                           .build();
                   mSession = new GeckoSession(sessionSettings);
                   mSession.getSettings().setUseTrackingProtection(false);
 
-                  // Flexible auto‑zoom (240 DPI baseline) – applied after session opens
+                  // Attach session to view – this opens the session
+                  mGeckoView.setSession(mSession);
+
+                  // Now set zoom factor based on DPI
                   android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
                   getWindowManager().getDefaultDisplay().getMetrics(metrics);
                   int deviceDpi = metrics.densityDpi;
                   float targetDpi = 240.0f;
-                  float flexibleZoomFactor = targetDpi / (float) deviceDpi;
-                  if (flexibleZoomFactor < 0.60f) {
-                      flexibleZoomFactor = 0.60f;
-                  } else if (flexibleZoomFactor > 1.20f) {
-                      flexibleZoomFactor = 1.20f;
+                  float zoomFactor = targetDpi / (float) deviceDpi;
+                  if (zoomFactor < 0.60f) {
+                      zoomFactor = 0.60f;
+                  } else if (zoomFactor > 1.20f) {
+                      zoomFactor = 1.20f;
                   }
-                  final float zoomFactor = flexibleZoomFactor; // for later use
-
-                  // Attach session to view – this opens the session
-                  mGeckoView.setSession(mSession);
-                  // Now session is open, set zoom factor
                   mSession.setZoomFactor(zoomFactor);
 
                   // Permission delegate: auto‑allow desktop notifications
@@ -419,7 +417,7 @@ jobs:
                           mCurrentFilePrompt = prompt;
                           Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                           intent.addCategory(Intent.CATEGORY_OPENABLE);
-                          if (prompt.isMultiple()) {
+                          if (prompt.isMultiple) {   // field, not method
                               intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                           }
                           try {
@@ -526,16 +524,16 @@ jobs:
 
                   rootLayout.addView(buttonContainer, containerParams);
 
-                  // Scroll via JavaScript – use mSession.evaluateJS
+                  // Scroll using loadUri with javascript: URL
                   btnUp.setOnClickListener(v -> {
                       if (mSession != null) {
-                          mSession.evaluateJS("window.scrollBy(0, -250);");
+                          mSession.loadUri("javascript:window.scrollBy(0, -250);");
                       }
                   });
 
                   btnDown.setOnClickListener(v -> {
                       if (mSession != null) {
-                          mSession.evaluateJS("window.scrollBy(0, 250);");
+                          mSession.loadUri("javascript:window.scrollBy(0, 250);");
                       }
                   });
               }
