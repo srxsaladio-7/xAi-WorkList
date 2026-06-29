@@ -465,7 +465,7 @@ jobs:
             //=======================================================
             // Fixing the fucking gallery handeling result & other codes
             //========================================================
-            @Override
+            @Override }
             protected void onActivityResult(int requestCode, int resultCode, Intent data) {
               super.onActivityResult(requestCode, resultCode, data);
               if (requestCode == FILE_CHOOSER_REQUEST_CODE && mCurrentFilePrompt != null) {
@@ -562,7 +562,6 @@ jobs:
                               mSession.open(mRuntime);
                               mGeckoView.setSession(mSession);
                               loadTarget();
-                          });
                       }
                   });
                   
