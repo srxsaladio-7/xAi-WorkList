@@ -214,7 +214,7 @@ jobs:
           EOF
 
       # ------------------------------------------------------------
-      # 6. MainActivity.java – Added Volume Zoom + Native Scroll
+      # 6. MainActivity.java – Volume Zoom (manual) + all toasts
       # ------------------------------------------------------------
       - name: Create Proguard Rules
         run: |
@@ -281,7 +281,7 @@ jobs:
               private GeckoSession.PromptDelegate.FilePrompt mCurrentFilePrompt;
               private final Handler mHandler = new Handler(Looper.getMainLooper());
 
-              // Zoom factor for Volume key adjustment
+              // Volume Key Zoom (manual)
               private float mZoomFactor = 1.0f;
 
               @Override
@@ -403,7 +403,7 @@ jobs:
                       }
                   });
 
-                  // Progress delegate
+                  // Progress delegate (shows loading bar and offline toast)
                   mSession.setProgressDelegate(new GeckoSession.ProgressDelegate() {
                       @Override
                       public void onPageStart(@NonNull GeckoSession session, @NonNull String url) {
@@ -424,9 +424,8 @@ jobs:
                                   mRetryCount = 0;
                                   mErrorLayout.setVisibility(View.GONE);
                                   mGeckoView.setVisibility(View.VISIBLE);
-                                  // Apply initial zoom (1.0) after successful load
-                                  applyZoom();
                               } else {
+                                  // ********** NETWORK OFFLINE TOAST **********
                                   android.widget.Toast.makeText(MainActivity.this,
                                           "Oh,ShiT! Net er dike chok maar, reconnecting...",
                                           android.widget.Toast.LENGTH_LONG).show();
@@ -444,7 +443,7 @@ jobs:
                       }
                   });
 
-                  // Navigation delegate
+                  // Navigation delegate (back history)
                   mSession.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
                       @Override
                       public void onCanGoBack(@NonNull GeckoSession session, boolean canGoBack) {
@@ -452,7 +451,7 @@ jobs:
                       }
                   });
 
-                  // Content delegate
+                  // Content delegate (crash recovery)
                   mSession.setContentDelegate(new GeckoSession.ContentDelegate() {
                       @Override
                       public void onCrash(@NonNull GeckoSession session) {
@@ -465,7 +464,7 @@ jobs:
                   });
               }
 
-              // Apply current zoom factor via JavaScript
+              // ==== MANUAL ZOOM via JavaScript (only on Volume keys) ====
               private void applyZoom() {
                   if (mSession == null) return;
                   String js = "javascript:(function() {" +
@@ -511,6 +510,7 @@ jobs:
                   mSession.loadUri(TARGET_URL);
               }
 
+              // ==== RETRY LOGIC (with retry progress toasts) ====
               private void scheduleRetry() {
                   if (mRetryCount >= MAX_RETRIES) {
                       if (!mUsedFallback) {
@@ -558,6 +558,7 @@ jobs:
                   super.onDestroy();
               }
 
+              // ==== DOUBLE‑BACK TO EXIT (with custom toast) ====
               private boolean doubleBackToExitPressedOnce = false;
 
               @Override
@@ -581,6 +582,7 @@ jobs:
                           doubleBackToExitPressedOnce = false, 2000);
               }
 
+              // ==== SCREEN‑OFF AUTO‑EXIT ====
               @Override
               protected void onStop() {
                   super.onStop();
@@ -598,8 +600,10 @@ jobs:
                   }
               }
 
+              // ==== KEY EVENTS: Back + Volume Zoom ====
               @Override
               public boolean onKeyDown(int keyCode, KeyEvent event) {
+                  // Back button (history navigation)
                   if (keyCode == KeyEvent.KEYCODE_BACK) {
                       if (mSession != null && mCanGoBack) {
                           return true;
