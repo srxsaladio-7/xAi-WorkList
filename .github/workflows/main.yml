@@ -214,7 +214,7 @@ jobs:
           EOF
 
       # ------------------------------------------------------------
-      # 6. MainActivity.java (removed buttons, added Volume Key Zoom)
+      # 6. MainActivity.java – Clean (No Zoom, No Volume Keys)
       # ------------------------------------------------------------
       - name: Create Proguard Rules
         run: |
@@ -281,9 +281,6 @@ jobs:
               private GeckoSession.PromptDelegate.FilePrompt mCurrentFilePrompt;
               private final Handler mHandler = new Handler(Looper.getMainLooper());
 
-              // Zoom factor: starts with 240 DPI calculation, adjustable via Volume keys
-              private float mZoomFactor = 1.0f;
-
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
@@ -293,7 +290,7 @@ jobs:
                   initGecko();
                   loadTarget();
 
-                  // Feature 1: Welcome toasts (Bengali/English mix)
+                  // Welcome toasts (Bengali/English mix)
                   new Handler(Looper.getMainLooper()).postDelayed(() ->
                           android.widget.Toast.makeText(MainActivity.this,
                                   "Phuck You BaBu!",
@@ -360,8 +357,8 @@ jobs:
                           FrameLayout.LayoutParams.MATCH_PARENT
                   ));
 
-                  // No custom scroll buttons – you have the native scroll thumb instead.
-                  // The native scroll bar is automatically shown by GeckoView.
+                  // No custom scroll buttons – native scroll bar (thumb) is provided by GeckoView.
+                  // You can drag the scroll thumb on the right side of the screen.
 
                   setContentView(root);
               }
@@ -382,16 +379,6 @@ jobs:
                           .allowJavascript(true)
                           .build();
                   mSession = new GeckoSession(sessionSettings);
-
-                  // Compute default zoom factor based on 240 DPI baseline
-                  android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
-                  getWindowManager().getDefaultDisplay().getMetrics(metrics);
-                  int deviceDpi = metrics.densityDpi;
-                  float targetDpi = 240.0f;
-                  float zoom = targetDpi / (float) deviceDpi;
-                  if (zoom < 0.60f) zoom = 0.60f;
-                  if (zoom > 1.20f) zoom = 1.20f;
-                  mZoomFactor = zoom;
 
                   mGeckoView.setSession(mSession);
 
@@ -436,7 +423,6 @@ jobs:
                                   mRetryCount = 0;
                                   mErrorLayout.setVisibility(View.GONE);
                                   mGeckoView.setVisibility(View.VISIBLE);
-                                  applyZoom(); // Apply default 240 DPI zoom
                               } else {
                                   android.widget.Toast.makeText(MainActivity.this,
                                           "Oh,ShiT! Net er dike chok maar, reconnecting...",
@@ -476,23 +462,6 @@ jobs:
                   });
               }
 
-              // ------------------------------------------------------------------
-              // Apply zoom via JavaScript (updates viewport meta tag)
-              // ------------------------------------------------------------------
-              private void applyZoom() {
-                  if (mSession == null) return;
-                  String js = "javascript:(function() {" +
-                          "  var meta = document.querySelector('meta[name=viewport]');" +
-                          "  if (!meta) {" +
-                          "    meta = document.createElement('meta');" +
-                          "    meta.name = 'viewport';" +
-                          "    document.head.appendChild(meta);" +
-                          "  }" +
-                          "  meta.setAttribute('content', 'width=device-width, initial-scale=" + mZoomFactor + ", maximum-scale=" + mZoomFactor + ", user-scalable=yes');" +
-                          "})();";
-                  mSession.loadUri(js);
-              }
-
               @Override
               protected void onActivityResult(int requestCode, int resultCode, Intent data) {
                   super.onActivityResult(requestCode, resultCode, data);
@@ -522,7 +491,6 @@ jobs:
                   mErrorLayout.setVisibility(View.GONE);
                   mGeckoView.setVisibility(View.VISIBLE);
                   mSession.loadUri(TARGET_URL);
-                  mHandler.postDelayed(this::applyZoom, 500);
               }
 
               private void scheduleRetry() {
@@ -535,7 +503,6 @@ jobs:
                               mErrorLayout.setVisibility(View.GONE);
                               mGeckoView.setVisibility(View.VISIBLE);
                               mSession.loadUri(FALLBACK_URL);
-                              mHandler.postDelayed(this::applyZoom, 500);
                           }, 1500L);
                       } else {
                           showError("Could not connect.\nPlease check your internet and reopen the app.");
@@ -550,7 +517,6 @@ jobs:
                           mErrorLayout.setVisibility(View.GONE);
                           mGeckoView.setVisibility(View.VISIBLE);
                           mSession.reload();
-                          mHandler.postDelayed(this::applyZoom, 500);
                       }
                   }, RETRY_DELAY * mRetryCount);
               }
@@ -614,52 +580,14 @@ jobs:
                   }
               }
 
-              // ==============================================================
-              // NEW: Volume Up/Down keys adjust the zoom factor dynamically
-              // ==============================================================
               @Override
               public boolean onKeyDown(int keyCode, KeyEvent event) {
-                  // Handle Back button (existing logic)
                   if (keyCode == KeyEvent.KEYCODE_BACK) {
                       if (mSession != null && mCanGoBack) {
                           return true;
                       }
                   }
-
-                  // Volume Up: increase zoom (max 1.8)
-                  if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                      if (mZoomFactor < 1.8f) {
-                          mZoomFactor += 0.05f;
-                          if (mZoomFactor > 1.8f) mZoomFactor = 1.8f;
-                          applyZoom();
-                          showZoomToast();
-                      } else {
-                          android.widget.Toast.makeText(this, "Max zoom reached (1.80x)", android.widget.Toast.LENGTH_SHORT).show();
-                      }
-                      // Return true to consume the key event (prevents volume change)
-                      // If you want the volume to still change system volume, change to return super.onKeyDown(keyCode, event);
-                      return true;
-                  }
-
-                  // Volume Down: decrease zoom (min 0.5)
-                  if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                      if (mZoomFactor > 0.5f) {
-                          mZoomFactor -= 0.05f;
-                          if (mZoomFactor < 0.5f) mZoomFactor = 0.5f;
-                          applyZoom();
-                          showZoomToast();
-                      } else {
-                          android.widget.Toast.makeText(this, "Min zoom reached (0.50x)", android.widget.Toast.LENGTH_SHORT).show();
-                      }
-                      return true;
-                  }
-
                   return super.onKeyDown(keyCode, event);
-              }
-
-              private void showZoomToast() {
-                  String msg = "Zoom: " + String.format("%.2f", mZoomFactor) + "x";
-                  android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show();
               }
           }
           EOF
