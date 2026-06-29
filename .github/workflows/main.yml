@@ -364,6 +364,7 @@ jobs:
                   FrameLayout.LayoutParams.MATCH_PARENT
            ));
             addScrollButtons(root);
+            
             setContentView(root);
           }
 
@@ -409,7 +410,6 @@ jobs:
                          request.grant();
                      } else {
                 }
-              }
           });
           //=====================================================
           // [FEATURE 3]: স্ক্রিনের নিচে ডায়নামিক স্ক্রোল বাটন (Up/Down) তৈরি
@@ -454,8 +454,14 @@ jobs:
                     mSession.getRuntime().getWebExtensionController().evaluateJavascript("window.scrollBy(0, -250);", null);
                 }
               });
-            }
 
+              btnDown.setOnClickListener(v -> {
+                if (mSession != null && mSession.getRuntime() != null) {
+                    mSession.getRuntime().getWebExtensionController().evaluateJavascript("window.scrollBy(0, 250);", null);
+                }
+            });
+          }
+          @
             //=======================================================
             // Fixing the fucking gallery handeling result & other codes
             //========================================================
