@@ -214,7 +214,7 @@ jobs:
           EOF
 
       # ------------------------------------------------------------
-      # 6. MainActivity.java (fully corrected for GeckoView 115)
+      # 6. MainActivity.java (final, fully corrected)
       # ------------------------------------------------------------
       - name: Create Proguard Rules
         run: |
@@ -257,6 +257,7 @@ jobs:
           import org.mozilla.geckoview.GeckoSession;
           import org.mozilla.geckoview.GeckoSessionSettings;
           import org.mozilla.geckoview.GeckoView;
+          import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PermissionRequest;
 
           public class MainActivity extends AppCompatActivity {
               private static final String TARGET_URL = "https://arena.ai";
@@ -375,26 +376,13 @@ jobs:
                           .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE)
                           .userAgentOverride("Mozilla/5.0 (Android 5.1; Mobile; rv:109.0) Gecko/114.0 Firefox/114.0")
                           .allowJavascript(true)
-                          .setFullZoom(true)  // enable full‑page zoom
+                          .fullZoom(true)  // enable full‑page zoom (no custom factor)
                           .build();
                   mSession = new GeckoSession(sessionSettings);
                   mSession.getSettings().setUseTrackingProtection(false);
 
                   // Attach session to view – this opens the session
                   mGeckoView.setSession(mSession);
-
-                  // Now set zoom factor based on DPI
-                  android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
-                  getWindowManager().getDefaultDisplay().getMetrics(metrics);
-                  int deviceDpi = metrics.densityDpi;
-                  float targetDpi = 240.0f;
-                  float zoomFactor = targetDpi / (float) deviceDpi;
-                  if (zoomFactor < 0.60f) {
-                      zoomFactor = 0.60f;
-                  } else if (zoomFactor > 1.20f) {
-                      zoomFactor = 1.20f;
-                  }
-                  mSession.setZoomFactor(zoomFactor);
 
                   // Permission delegate: auto‑allow desktop notifications
                   mSession.setPermissionDelegate(new GeckoSession.PermissionDelegate() {
@@ -417,9 +405,8 @@ jobs:
                           mCurrentFilePrompt = prompt;
                           Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                           intent.addCategory(Intent.CATEGORY_OPENABLE);
-                          if (prompt.isMultiple) {   // field, not method
-                              intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                          }
+                          // Always allow multiple (ignored if not supported)
+                          intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                           try {
                               startActivityForResult(Intent.createChooser(intent, "Select Image"),
                                       FILE_CHOOSER_REQUEST_CODE);
