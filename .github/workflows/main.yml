@@ -565,8 +565,7 @@ jobs:
                      mHandler.post(() -> {
                       mSession.open(mRuntime);
                       mGeckoView.setSession(mSession);
-                      loadTarget();
-                         });    
+                      loadTarget();    
                       }
                   });
                   
