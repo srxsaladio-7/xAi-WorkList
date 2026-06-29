@@ -363,7 +363,8 @@ jobs:
           root.addView(mErrorLayout, new FrameLayout.LayoutParams(
                   FrameLayout.LayoutParams.MATCH_PARENT,
                   FrameLayout.LayoutParams.MATCH_PARENT
-
+                  ));
+                  
             addScrollButtons(root);
             
             setContentView(root);
