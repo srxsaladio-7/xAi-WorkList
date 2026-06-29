@@ -420,7 +420,7 @@ jobs:
           //=====================================================
           // [FEATURE 3]: স্ক্রিনের নিচে ডায়নামিক স্ক্রোল বাটন (Up/Down) তৈরি
           //======================================================
-          private void addScrollButtons(FrameLayout rootLayout) {
+          private void addScrollButtons(FrameLayout rootLayout) }
              android.widget.LinearLayout buttonContainer = new android.widget.LinearLayout(this);
              buttonContainer.setOrientation(android.widget.LinearLayout.HORIZONTAL);
              buttonContainer.setGravity(android.view.Gravity.CENTER);
@@ -570,10 +570,10 @@ jobs:
                       }
                   });
                   
-                  mSession.open(mRuntime);
-                  mGeckoView.setSession(mSession);
+
               }
-              
+             }
+             
               private void loadTarget() {
                   mPageLoaded = false;
                   mRetryCount = 0;
