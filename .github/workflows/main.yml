@@ -214,7 +214,7 @@ jobs:
           EOF
 
       # ------------------------------------------------------------
-      # 6. MainActivity.java (API‑corrected)
+      # 6. MainActivity.java (final – no zoom, fully qualified PermissionRequest)
       # ------------------------------------------------------------
       - name: Create Proguard Rules
         run: |
@@ -378,11 +378,7 @@ jobs:
                           .build();
                   mSession = new GeckoSession(sessionSettings);
 
-                  // Enable full-page zoom
-                  mSession.getSettings().setFullZoom(true);
-
-                  // Optionally adjust zoom factor (if needed) – but this version may not have setZoomFactor.
-                  // We'll skip custom zoom factor to avoid errors.
+                  // No explicit zoom setting – default works fine.
 
                   // Attach session to view
                   mGeckoView.setSession(mSession);
@@ -391,8 +387,8 @@ jobs:
                   mSession.setPermissionDelegate(new GeckoSession.PermissionDelegate() {
                       @Override
                       public void onPermissionRequest(@NonNull GeckoSession session,
-                                                      @NonNull PermissionRequest request) {
-                          if (request.type == PermissionRequest.PERMISSION_DESKTOP_NOTIFICATION) {
+                                                      @NonNull GeckoSession.PermissionDelegate.PermissionRequest request) {
+                          if (request.type == GeckoSession.PermissionDelegate.PermissionRequest.PERMISSION_DESKTOP_NOTIFICATION) {
                               request.grant();
                           } else {
                               request.reject();
