@@ -409,8 +409,11 @@ jobs:
                      if (request.type == PermissionRequest.PERMISSION_DESKTOP_NOTIFICATION) {
                          request.grant();
                      } else {
-                }
-          });
+                        request.reject();
+                     }
+                   }
+               });  
+           
           //=====================================================
           // [FEATURE 3]: স্ক্রিনের নিচে ডায়নামিক স্ক্রোল বাটন (Up/Down) তৈরি
           //======================================================
@@ -461,11 +464,11 @@ jobs:
                 }
             });
           }
-          @
+          
             //=======================================================
             // Fixing the fucking gallery handeling result & other codes
             //========================================================
-            @Override }
+            @Override
             protected void onActivityResult(int requestCode, int resultCode, Intent data) {
               super.onActivityResult(requestCode, resultCode, data);
               if (requestCode == FILE_CHOOSER_REQUEST_CODE && mCurrentFilePrompt != null) {
@@ -484,7 +487,7 @@ jobs:
                          }
                          mCurrentFilePrompt = null;
                        }
-                     }  
+                     }
 
           
           // [FEATURE 4]: গ্যালারি থেকে ছবি আপলোড/পোস্ট করার প্রম্পট ফিক্স
@@ -515,8 +518,7 @@ jobs:
                               mProgressBar.setVisibility(View.VISIBLE);
                               mProgressBar.setProgress(10);
                           });
-                     }
-
+                      }
                       @Override
                       public void onPageStop(@NonNull GeckoSession session, boolean success) {
                           mHandler.post(() -> {
@@ -562,6 +564,7 @@ jobs:
                               mSession.open(mRuntime);
                               mGeckoView.setSession(mSession);
                               loadTarget();
+                         });    
                       }
                   });
                   
@@ -583,7 +586,7 @@ jobs:
                       if (!mUsedFallback) {
                           mUsedFallback = true;
                           mRetryCount = 0;
-                          showMessage("Trying twitter.com...");
+                          showMessage("Trying arena.ai...");
                           mHandler.postDelayed(() -> {
                               mErrorLayout.setVisibility(View.GONE);
                               mGeckoView.setVisibility(View.VISIBLE);
