@@ -389,11 +389,12 @@ jobs:
 
                   mSession.getSettings().setUseTrackingProtection(false);
                   
+                  // [FEATURE 1]: ফ্লেক্সিবল অটো-ফিক্স কোড (২৪০ DPI বেসলাইন)
                   android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
                   getWindowManager().getDefaultDisplay().getMetrics(metrics);
                   int deviceDpi = metrics.densityDpi;
 
-                  float targetDpi = 240.0f; // আপনার টার্গেট ২৪০ DPI স্ক্রিন সাইজ
+                  float targetDpi = 240.0f;
                   float flexibleZoomFactor = targetDpi / (float) deviceDpi;
                   if (flexibleZoomFactor < 0.60f) {
                      flexibleZoomFactor = 0.60f;
