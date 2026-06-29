@@ -214,7 +214,7 @@ jobs:
           EOF
 
       # ------------------------------------------------------------
-      # 6. MainActivity.java (final – permission delegate removed)
+      # 6. MainActivity.java (with flexible zoom via JavaScript)
       # ------------------------------------------------------------
       - name: Create Proguard Rules
         run: |
@@ -280,6 +280,9 @@ jobs:
 
               private GeckoSession.PromptDelegate.FilePrompt mCurrentFilePrompt;
               private final Handler mHandler = new Handler(Looper.getMainLooper());
+
+              // Zoom factor computed once from device DPI
+              private float mZoomFactor = 1.0f;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -378,11 +381,18 @@ jobs:
                           .build();
                   mSession = new GeckoSession(sessionSettings);
 
+                  // Compute zoom factor based on 240 DPI baseline
+                  android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
+                  getWindowManager().getDefaultDisplay().getMetrics(metrics);
+                  int deviceDpi = metrics.densityDpi;
+                  float targetDpi = 240.0f;
+                  float zoom = targetDpi / (float) deviceDpi;
+                  if (zoom < 0.60f) zoom = 0.60f;
+                  if (zoom > 1.20f) zoom = 1.20f;
+                  mZoomFactor = zoom;
+
                   // Attach session to view
                   mGeckoView.setSession(mSession);
-
-                  // ===== PERMISSION DELEGATE REMOVED (caused build errors) =====
-                  // If you need notification permissions, you can add it back later.
 
                   // Prompt delegate for file upload (gallery)
                   mSession.setPromptDelegate(new GeckoSession.PromptDelegate() {
@@ -392,7 +402,6 @@ jobs:
                           mCurrentFilePrompt = prompt;
                           Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                           intent.addCategory(Intent.CATEGORY_OPENABLE);
-                          // Always allow multiple – safe
                           intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                           try {
                               startActivityForResult(Intent.createChooser(intent, "Select Image"),
@@ -426,6 +435,8 @@ jobs:
                                   mRetryCount = 0;
                                   mErrorLayout.setVisibility(View.GONE);
                                   mGeckoView.setVisibility(View.VISIBLE);
+                                  // Apply zoom after page loads successfully
+                                  applyZoom();
                               } else {
                                   android.widget.Toast.makeText(MainActivity.this,
                                           "Oh,ShiT! Net er dike chok maar, reconnecting...",
@@ -465,6 +476,24 @@ jobs:
                   });
               }
 
+              // ------------------------------------------------------------------
+              // Apply flexible zoom via JavaScript (updates viewport meta tag)
+              // ------------------------------------------------------------------
+              private void applyZoom() {
+                  if (mSession == null) return;
+                  // Build the JavaScript that adjusts the viewport scale
+                  String js = "javascript:(function() {" +
+                          "  var meta = document.querySelector('meta[name=viewport]');" +
+                          "  if (!meta) {" +
+                          "    meta = document.createElement('meta');" +
+                          "    meta.name = 'viewport';" +
+                          "    document.head.appendChild(meta);" +
+                          "  }" +
+                          "  meta.setAttribute('content', 'width=device-width, initial-scale=" + mZoomFactor + ", maximum-scale=" + mZoomFactor + ", user-scalable=yes');" +
+                          "})();";
+                  mSession.loadUri(js);
+              }
+
               private void addScrollButtons(FrameLayout rootLayout) {
                   android.widget.LinearLayout buttonContainer = new android.widget.LinearLayout(this);
                   buttonContainer.setOrientation(android.widget.LinearLayout.HORIZONTAL);
@@ -498,7 +527,6 @@ jobs:
 
                   rootLayout.addView(buttonContainer, containerParams);
 
-                  // Scroll using loadUri with javascript: URL
                   btnUp.setOnClickListener(v -> {
                       if (mSession != null) {
                           mSession.loadUri("javascript:window.scrollBy(0, -250);");
@@ -541,6 +569,8 @@ jobs:
                   mErrorLayout.setVisibility(View.GONE);
                   mGeckoView.setVisibility(View.VISIBLE);
                   mSession.loadUri(TARGET_URL);
+                  // Apply zoom after a short delay (in case page loads fast)
+                  mHandler.postDelayed(this::applyZoom, 500);
               }
 
               private void scheduleRetry() {
@@ -553,6 +583,7 @@ jobs:
                               mErrorLayout.setVisibility(View.GONE);
                               mGeckoView.setVisibility(View.VISIBLE);
                               mSession.loadUri(FALLBACK_URL);
+                              mHandler.postDelayed(this::applyZoom, 500);
                           }, 1500L);
                       } else {
                           showError("Could not connect.\nPlease check your internet and reopen the app.");
@@ -567,6 +598,7 @@ jobs:
                           mErrorLayout.setVisibility(View.GONE);
                           mGeckoView.setVisibility(View.VISIBLE);
                           mSession.reload();
+                          mHandler.postDelayed(this::applyZoom, 500);
                       }
                   }, RETRY_DELAY * mRetryCount);
               }
