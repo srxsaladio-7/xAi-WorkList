@@ -286,6 +286,7 @@ jobs:
               private boolean mUsedFallback = false;
               private boolean mCanGoBack = false;
               
+              private GeckoSession.PromptDelegate.FilePrompt mCurrentFilePrompt;
               private final Handler mHandler = new Handler(Looper.getMainLooper());
 
               @Override
@@ -362,7 +363,7 @@ jobs:
           root.addView(mErrorLayout, new FrameLayout.LayoutParams(
                   FrameLayout.LayoutParams.MATCH_PARENT,
                   FrameLayout.LayoutParams.MATCH_PARENT
-           ));
+
             addScrollButtons(root);
             
             setContentView(root);
@@ -558,12 +559,12 @@ jobs:
                   });
 
                   mSession.setContentDelegate(new GeckoSession.ContentDelegate() {
-                      @Override
-                      public void onCrash(@NonNull GeckoSession session) {
-                          mHandler.post(() -> {
-                              mSession.open(mRuntime);
-                              mGeckoView.setSession(mSession);
-                              loadTarget();
+                   @Override
+                   public void onCrash(@NonNull GeckoSession session) {
+                     mHandler.post(() -> {
+                      mSession.open(mRuntime);
+                      mGeckoView.setSession(mSession);
+                      loadTarget();
                          });    
                       }
                   });
