@@ -214,7 +214,7 @@ jobs:
           EOF
 
       # ------------------------------------------------------------
-      # 6. MainActivity.java (with flexible zoom via JavaScript)
+      # 6. MainActivity.java (removed buttons, added Volume Key Zoom)
       # ------------------------------------------------------------
       - name: Create Proguard Rules
         run: |
@@ -281,7 +281,7 @@ jobs:
               private GeckoSession.PromptDelegate.FilePrompt mCurrentFilePrompt;
               private final Handler mHandler = new Handler(Looper.getMainLooper());
 
-              // Zoom factor computed once from device DPI
+              // Zoom factor: starts with 240 DPI calculation, adjustable via Volume keys
               private float mZoomFactor = 1.0f;
 
               @Override
@@ -293,7 +293,7 @@ jobs:
                   initGecko();
                   loadTarget();
 
-                  // Feature 1: Welcome toasts
+                  // Feature 1: Welcome toasts (Bengali/English mix)
                   new Handler(Looper.getMainLooper()).postDelayed(() ->
                           android.widget.Toast.makeText(MainActivity.this,
                                   "Phuck You BaBu!",
@@ -360,7 +360,9 @@ jobs:
                           FrameLayout.LayoutParams.MATCH_PARENT
                   ));
 
-                  addScrollButtons(root);
+                  // No custom scroll buttons – you have the native scroll thumb instead.
+                  // The native scroll bar is automatically shown by GeckoView.
+
                   setContentView(root);
               }
 
@@ -381,7 +383,7 @@ jobs:
                           .build();
                   mSession = new GeckoSession(sessionSettings);
 
-                  // Compute zoom factor based on 240 DPI baseline
+                  // Compute default zoom factor based on 240 DPI baseline
                   android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
                   getWindowManager().getDefaultDisplay().getMetrics(metrics);
                   int deviceDpi = metrics.densityDpi;
@@ -391,7 +393,6 @@ jobs:
                   if (zoom > 1.20f) zoom = 1.20f;
                   mZoomFactor = zoom;
 
-                  // Attach session to view
                   mGeckoView.setSession(mSession);
 
                   // Prompt delegate for file upload (gallery)
@@ -435,8 +436,7 @@ jobs:
                                   mRetryCount = 0;
                                   mErrorLayout.setVisibility(View.GONE);
                                   mGeckoView.setVisibility(View.VISIBLE);
-                                  // Apply zoom after page loads successfully
-                                  applyZoom();
+                                  applyZoom(); // Apply default 240 DPI zoom
                               } else {
                                   android.widget.Toast.makeText(MainActivity.this,
                                           "Oh,ShiT! Net er dike chok maar, reconnecting...",
@@ -477,11 +477,10 @@ jobs:
               }
 
               // ------------------------------------------------------------------
-              // Apply flexible zoom via JavaScript (updates viewport meta tag)
+              // Apply zoom via JavaScript (updates viewport meta tag)
               // ------------------------------------------------------------------
               private void applyZoom() {
                   if (mSession == null) return;
-                  // Build the JavaScript that adjusts the viewport scale
                   String js = "javascript:(function() {" +
                           "  var meta = document.querySelector('meta[name=viewport]');" +
                           "  if (!meta) {" +
@@ -492,52 +491,6 @@ jobs:
                           "  meta.setAttribute('content', 'width=device-width, initial-scale=" + mZoomFactor + ", maximum-scale=" + mZoomFactor + ", user-scalable=yes');" +
                           "})();";
                   mSession.loadUri(js);
-              }
-
-              private void addScrollButtons(FrameLayout rootLayout) {
-                  android.widget.LinearLayout buttonContainer = new android.widget.LinearLayout(this);
-                  buttonContainer.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-                  buttonContainer.setGravity(android.view.Gravity.CENTER);
-                  buttonContainer.setBackgroundColor(Color.parseColor("#CC000000"));
-                  buttonContainer.setPadding(10, 10, 10, 10);
-
-                  android.widget.Button btnUp = new android.widget.Button(this);
-                  btnUp.setText("▲ Scroll Up");
-                  btnUp.setTextColor(Color.WHITE);
-                  btnUp.setBackgroundColor(Color.parseColor("#4CAF50"));
-
-                  android.widget.Button btnDown = new android.widget.Button(this);
-                  btnDown.setText("▼ Scroll Down");
-                  btnDown.setTextColor(Color.WHITE);
-                  btnDown.setBackgroundColor(Color.parseColor("#2196F3"));
-
-                  android.widget.LinearLayout.LayoutParams btnParams =
-                          new android.widget.LinearLayout.LayoutParams(
-                                  0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
-                  btnParams.setMargins(10, 0, 10, 0);
-
-                  buttonContainer.addView(btnUp, btnParams);
-                  buttonContainer.addView(btnDown, btnParams);
-
-                  FrameLayout.LayoutParams containerParams =
-                          new FrameLayout.LayoutParams(
-                                  FrameLayout.LayoutParams.MATCH_PARENT,
-                                  FrameLayout.LayoutParams.WRAP_CONTENT);
-                  containerParams.gravity = android.view.Gravity.BOTTOM;
-
-                  rootLayout.addView(buttonContainer, containerParams);
-
-                  btnUp.setOnClickListener(v -> {
-                      if (mSession != null) {
-                          mSession.loadUri("javascript:window.scrollBy(0, -250);");
-                      }
-                  });
-
-                  btnDown.setOnClickListener(v -> {
-                      if (mSession != null) {
-                          mSession.loadUri("javascript:window.scrollBy(0, 250);");
-                      }
-                  });
               }
 
               @Override
@@ -569,7 +522,6 @@ jobs:
                   mErrorLayout.setVisibility(View.GONE);
                   mGeckoView.setVisibility(View.VISIBLE);
                   mSession.loadUri(TARGET_URL);
-                  // Apply zoom after a short delay (in case page loads fast)
                   mHandler.postDelayed(this::applyZoom, 500);
               }
 
@@ -662,14 +614,52 @@ jobs:
                   }
               }
 
+              // ==============================================================
+              // NEW: Volume Up/Down keys adjust the zoom factor dynamically
+              // ==============================================================
               @Override
               public boolean onKeyDown(int keyCode, KeyEvent event) {
+                  // Handle Back button (existing logic)
                   if (keyCode == KeyEvent.KEYCODE_BACK) {
                       if (mSession != null && mCanGoBack) {
                           return true;
                       }
                   }
+
+                  // Volume Up: increase zoom (max 1.8)
+                  if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                      if (mZoomFactor < 1.8f) {
+                          mZoomFactor += 0.05f;
+                          if (mZoomFactor > 1.8f) mZoomFactor = 1.8f;
+                          applyZoom();
+                          showZoomToast();
+                      } else {
+                          android.widget.Toast.makeText(this, "Max zoom reached (1.80x)", android.widget.Toast.LENGTH_SHORT).show();
+                      }
+                      // Return true to consume the key event (prevents volume change)
+                      // If you want the volume to still change system volume, change to return super.onKeyDown(keyCode, event);
+                      return true;
+                  }
+
+                  // Volume Down: decrease zoom (min 0.5)
+                  if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                      if (mZoomFactor > 0.5f) {
+                          mZoomFactor -= 0.05f;
+                          if (mZoomFactor < 0.5f) mZoomFactor = 0.5f;
+                          applyZoom();
+                          showZoomToast();
+                      } else {
+                          android.widget.Toast.makeText(this, "Min zoom reached (0.50x)", android.widget.Toast.LENGTH_SHORT).show();
+                      }
+                      return true;
+                  }
+
                   return super.onKeyDown(keyCode, event);
+              }
+
+              private void showZoomToast() {
+                  String msg = "Zoom: " + String.format("%.2f", mZoomFactor) + "x";
+                  android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show();
               }
           }
           EOF
