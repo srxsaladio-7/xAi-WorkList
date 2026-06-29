@@ -214,7 +214,7 @@ jobs:
           EOF
 
       # ------------------------------------------------------------
-      # 6. MainActivity.java – Clean (No Zoom, No Volume Keys)
+      # 6. MainActivity.java – Added Volume Zoom + Native Scroll
       # ------------------------------------------------------------
       - name: Create Proguard Rules
         run: |
@@ -280,6 +280,9 @@ jobs:
 
               private GeckoSession.PromptDelegate.FilePrompt mCurrentFilePrompt;
               private final Handler mHandler = new Handler(Looper.getMainLooper());
+
+              // Zoom factor for Volume key adjustment
+              private float mZoomFactor = 1.0f;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -357,9 +360,7 @@ jobs:
                           FrameLayout.LayoutParams.MATCH_PARENT
                   ));
 
-                  // No custom scroll buttons – native scroll bar (thumb) is provided by GeckoView.
-                  // You can drag the scroll thumb on the right side of the screen.
-
+                  // Native scroll thumb is provided by GeckoView – no custom buttons.
                   setContentView(root);
               }
 
@@ -423,6 +424,8 @@ jobs:
                                   mRetryCount = 0;
                                   mErrorLayout.setVisibility(View.GONE);
                                   mGeckoView.setVisibility(View.VISIBLE);
+                                  // Apply initial zoom (1.0) after successful load
+                                  applyZoom();
                               } else {
                                   android.widget.Toast.makeText(MainActivity.this,
                                           "Oh,ShiT! Net er dike chok maar, reconnecting...",
@@ -460,6 +463,21 @@ jobs:
                           });
                       }
                   });
+              }
+
+              // Apply current zoom factor via JavaScript
+              private void applyZoom() {
+                  if (mSession == null) return;
+                  String js = "javascript:(function() {" +
+                          "  var meta = document.querySelector('meta[name=viewport]');" +
+                          "  if (!meta) {" +
+                          "    meta = document.createElement('meta');" +
+                          "    meta.name = 'viewport';" +
+                          "    document.head.appendChild(meta);" +
+                          "  }" +
+                          "  meta.setAttribute('content', 'width=device-width, initial-scale=" + mZoomFactor + ", maximum-scale=" + mZoomFactor + ", user-scalable=yes');" +
+                          "})();";
+                  mSession.loadUri(js);
               }
 
               @Override
@@ -587,7 +605,39 @@ jobs:
                           return true;
                       }
                   }
+
+                  // Volume Up – increase zoom (max 1.8)
+                  if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                      if (mZoomFactor < 1.8f) {
+                          mZoomFactor += 0.05f;
+                          if (mZoomFactor > 1.8f) mZoomFactor = 1.8f;
+                          applyZoom();
+                          showZoomToast();
+                      } else {
+                          android.widget.Toast.makeText(this, "Max zoom reached (1.80x)", android.widget.Toast.LENGTH_SHORT).show();
+                      }
+                      return true;
+                  }
+
+                  // Volume Down – decrease zoom (min 0.5)
+                  if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                      if (mZoomFactor > 0.5f) {
+                          mZoomFactor -= 0.05f;
+                          if (mZoomFactor < 0.5f) mZoomFactor = 0.5f;
+                          applyZoom();
+                          showZoomToast();
+                      } else {
+                          android.widget.Toast.makeText(this, "Min zoom reached (0.50x)", android.widget.Toast.LENGTH_SHORT).show();
+                      }
+                      return true;
+                  }
+
                   return super.onKeyDown(keyCode, event);
+              }
+
+              private void showZoomToast() {
+                  String msg = "Zoom: " + String.format("%.2f", mZoomFactor) + "x";
+                  android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show();
               }
           }
           EOF
