@@ -363,7 +363,7 @@ jobs:
                   FrameLayout.LayoutParams.MATCH_PARENT,
                   FrameLayout.LayoutParams.MATCH_PARENT
            ));
-
+            addScrollButtons(root);
             setContentView(root);
           }
 
@@ -385,6 +385,121 @@ jobs:
                   mSession = new GeckoSession(sessionSettings);
 
                   mSession.getSettings().setUseTrackingProtection(false);
+                  
+                  android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
+                  getWindowManager().getDefaultDisplay().getMetrics(metrics);
+                  int deviceDpi = metrics.densityDpi;
+
+                  float targetDpi = 240.0f; // আপনার টার্গেট ২৪০ DPI স্ক্রিন সাইজ
+                  float flexibleZoomFactor = targetDpi / (float) deviceDpi;
+                  if (flexibleZoomFactor < 0.60f) {
+                     flexibleZoomFactor = 0.60f;
+                  } else if (flexibleZoomFactor > 1.20f) {
+                     flexibleZoomFactor = 1.20f;
+                  }
+                  mSession.getSettings().setFullZoom(flexibleZoomFactor);
+                  
+                  //====================================================
+                  // [FEATURE 2]: সাইটের জন্য নোটিফিকেশন পারমিশন অটো-অ্যালো করা
+                  //=====================================================
+                  mSession.setPermissionDelegate(new GeckoSession.PermissionDelegate() {
+                   @Override
+                   public void onPermissionRequest(@NonNull GeckoSession session, @NonNull PermissionRequest request) {
+                     if (request.type == PermissionRequest.PERMISSION_DESKTOP_NOTIFICATION) {
+                         request.grant();
+                     } else {
+                }
+              }
+          });
+          //=====================================================
+          // [FEATURE 3]: স্ক্রিনের নিচে ডায়নামিক স্ক্রোল বাটন (Up/Down) তৈরি
+          //======================================================
+          private void addScrollButtons(FrameLayout rootLayout) {
+             android.widget.LinearLayout buttonContainer = new android.widget.LinearLayout(this);
+             buttonContainer.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+             buttonContainer.setGravity(android.view.Gravity.CENTER);
+             buttonContainer.setBackgroundColor(Color.parseColor("#CC000000"));
+             buttonContainer.setPadding(10, 10, 10, 10);
+
+             // Scroll up button
+             android.widget.Button btnUp = new android.widget.Button(this);
+             btnUp.setText("▲ Scroll Up");
+             btnUp.setTextColor(Color.WHITE);
+             btnUp.setBackgroundColor(Color.parseColor("#4CAF50"));
+
+             // স্ক্রোল ডাউন বাটন
+             android.widget.Button btnDown = new android.widget.Button(this);
+             btnDown.setText("▼ Scroll Down");
+             btnDown.setTextColor(Color.WHITE);
+             btnDown.setBackgroundColor(Color.parseColor("#2196F3"));
+
+             // বাটনের মার্জিন ও সাইজ সেট করা
+             android.widget.LinearLayout.LayoutParams btnParams = new android.widget.LinearLayout.LayoutParams(
+                 0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+             btnParams.setMargins(10, 0, 10, 0);
+             
+             buttonContainer.addView(btnUp, btnParams);
+             buttonContainer.addView(btnDown, btnParams);
+
+             // Full container upside down (Bottom)
+             FrameLayout.LayoutParams containerParams = new FrameLayout.LayoutParams(
+                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+             containerParams.gravity = android.view.Gravity.BOTTOM;
+
+             rootLayout.addView(buttonContainer, containerParams);
+
+              // JavaScript রান করে স্ক্রোল করানো
+              btnUp.setOnClickListener(v -> {
+                if (mSession != null && mSession.getRuntime() != null) {
+                    mSession.getRuntime().getWebExtensionController().evaluateJavascript("window.scrollBy(0, -250);", null);
+                }
+              });
+            }
+
+            //=======================================================
+            // Fixing the fucking gallery handeling result & other codes
+            //========================================================
+            @Override
+            protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+              super.onActivityResult(requestCode, resultCode, data);
+              if (requestCode == FILE_CHOOSER_REQUEST_CODE && mCurrentFilePrompt != null) {
+                  if (resultCode == RESULT_OK && data != null) {
+                      if (data.getClipData() != null) {
+                          int count = data.getClipData().getItemCount();
+                          Uri[] uris = new Uri[count];
+                          for (int i = 0; i < count; i++) {
+                             uris[i] = data.getClipData().getItemAt(i).getUri();
+                          }
+                          mCurrentFilePrompt.confirm(this, uris);
+                         } else if (data.getData() != null) {
+                            mCurrentFilePrompt.confirm(this, data.getData());
+                         } else {
+                            mCurrentFilePrompt.dismiss();
+                         }
+                         mCurrentFilePrompt = null;
+                       }
+                     }  
+
+          
+          // [FEATURE 4]: গ্যালারি থেকে ছবি আপলোড/পোস্ট করার প্রম্পট ফিক্স
+          mSession.setPromptDelegate(new GeckoSession.PromptDelegate() {
+           @Override
+           public GeckoResult<PromptResponse> onFilePrompt(@NonNull GeckoSession session, @NonNull FilePrompt prompt) {
+             mCurrentFilePrompt = prompt;
+             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+             intent.addCategory(Intent.CATEGORY_OPENABLE);
+             if (prompt.isMultiple) {
+                 intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+             }
+             try {
+                 startActivityForResult(Intent.createChooser(intent, "Select Image"), FILE_CHOOSER_REQUEST_CODE);
+             } catch (Exception e) {
+                mCurrentFilePrompt = null;
+                return GeckoResult.fromValue(prompt.dismiss());
+             }
+              return null;
+             }
+          });
 
                   mSession.setProgressDelegate(new GeckoSession.ProgressDelegate() {
                       @Override
