@@ -29,15 +29,14 @@ jobs:
           accept-android-sdk-licenses: true
 
       # ------------------------------------------------------------
-      # 1. GeckoView version
+      # 1. Get GeckoView version (with reliable fallback)
       # ------------------------------------------------------------
       - name: Determine GeckoView version
         id: gecko
         run: | 
           echo "GECKO_VERSION=115.0.20230726201356" >> $GITHUB_ENV
-
       # ------------------------------------------------------------
-      # 2. Create directories
+      # 2. Create project directories
       # ------------------------------------------------------------
       - name: Create project directories
         run: |
@@ -45,9 +44,8 @@ jobs:
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/xml
           mkdir -p gradle/wrapper
-
       # ------------------------------------------------------------
-      # 3. Gradle files
+      # 3. Gradle files (AGP 8.2.0, compileSdk 34)
       # ------------------------------------------------------------
       - name: Write settings.gradle
         run: |
@@ -55,7 +53,6 @@ jobs:
           rootProject.name = "xAi"
           include ':app'
           EOF
-
       - name: Write root build.gradle
         run: |
           cat > build.gradle << 'EOF'
@@ -82,7 +79,6 @@ jobs:
             delete rootProject.buildDir
           }
           EOF
-
       - name: Write gradle.properties
         run: |
           cat > gradle.properties << 'EOF'
@@ -92,7 +88,6 @@ jobs:
           android.enableJetifier=true
           android.enableR8.fullMode=false
           EOF
-
       # ------------------------------------------------------------
       # 4. App build.gradle
       # ------------------------------------------------------------
@@ -100,12 +95,10 @@ jobs:
         run: |
           cat > app/build.gradle << 'EOF'
           apply plugin: 'com.android.application'
-
-          android {
-            namespace "com.bdadtt.bappa"
-            compileSdk 34
-
-            defaultConfig {
+           android {
+               namespace "com.bdadtt.bappa"
+               compileSdk 34
+             defaultConfig {
               applicationId "com.bdadtt.bappa"
               minSdkVersion 21
               targetSdkVersion 33
@@ -113,12 +106,12 @@ jobs:
               versionName "1.0"
               multiDexEnabled true
               resConfigs "en"
+              
               ndk {
-                abiFilters "armeabi-v7a"
-              }
-            }
-
-            signingConfigs {
+                  abiFilters "armeabi-v7a"
+             }
+           }
+          signingConfigs {
               release {
                 storeFile file("xai_release.jks")
                 storePassword "xai_store_pass"
@@ -129,40 +122,50 @@ jobs:
               }
             }
             buildTypes {
-              release {
-                signingConfig signingConfigs.release
-                minifyEnabled true
-                shrinkResources true
-                proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-              }
+               release {
+                   signingConfig signingConfigs.release
+                   minifyEnabled true
+                   shrinkResources true
+                   proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+               }
             }
             compileOptions {
-              sourceCompatibility JavaVersion.VERSION_1_8
-              targetCompatibility JavaVersion.VERSION_1_8
-            }
+                sourceCompatibility JavaVersion.VERSION_1_8
+                targetCompatibility JavaVersion.VERSION_1_8
+           }
             
             packagingOptions {
-              jniLibs {
-                useLegacyPackaging true
-              }
-              resources {
-                excludes += '/META-INF/{AL2.0,LGPL2.1}'
-                excludes += '/META-INF/DEPENDENCIES'
-              }
-            }
-          }
-
+                jniLibs {
+                    useLegacyPackaging true
+                }
+                
+                resources {
+                    excludes += '/META-INF/{AL2.0,LGPL2.1}'
+                    excludes += '/META-INF/DEPENDENCIES'
+                }
+           }
+           }
           dependencies {
-            constraints {
+               constraints {
+                  implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22") {
+                      because("Aligns JDK 7 extensions with the core stdlib to fix duplicate classes")
+                  }
+                  implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22") {
+                      because("Aligns JDK 8 extensions with the core stdlib to fix duplicate classes")
+                  }
+               }
+               
+          // Force old Kotlin extensions to resolve cleanly without duplication
+          constraints {
               implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22") {
-                because("Aligns JDK 7 extensions with the core stdlib")
+                  because("Aligns JDK 7 extensions with the core stdlib to fix duplicate classes")
               }
               implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22") {
-                because("Aligns JDK 8 extensions with the core stdlib")
-              }
+                  because("Aligns JDK 8 extensions with the core stdlib to fix duplicate classes")
+               }
             }
-
             implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
             implementation 'androidx.core:core:1.12.0'
             implementation 'androidx.core:core-ktx:1.12.0'     
             implementation 'androidx.multidex:multidex:2.0.1'
@@ -182,11 +185,9 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
               android:installLocation="preferExternal">
-
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
             <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-
             <application
                 android:name="androidx.multidex.MultiDexApplication"
                 android:allowBackup="false"
@@ -196,7 +197,6 @@ jobs:
                 android:networkSecurityConfig="@xml/network_security_config"
                 android:usesCleartextTraffic="false"
                 android:theme="@style/AppTheme">
-
               <activity
                   android:name=".MainActivity"
                   android:exported="true"
@@ -211,11 +211,10 @@ jobs:
             </application>
           </manifest>
           EOF
-
       # ------------------------------------------------------------
-      # 6. MainActivity.java – Volume Zoom (manual) + all toasts
+      # 6. MainActivity.java (your robust version)
       # ------------------------------------------------------------
-      - name: Create Proguard Rules
+      - name: Create Proguard Rules Config
         run: |
           cat > app/proguard-rules.pro << 'EOF'
           -keep class org.mozilla.geckoview.** { *; }
@@ -233,10 +232,7 @@ jobs:
         run: |
           cat > app/src/main/java/com/bdadtt/bappa/MainActivity.java << 'EOF'
           package com.bdadtt.bappa;
-
-          import android.content.Intent;
           import android.graphics.Color;
-          import android.net.Uri;
           import android.os.Bundle;
           import android.os.Handler;
           import android.os.Looper;
@@ -247,147 +243,119 @@ jobs:
           import android.widget.ProgressBar;
           import android.widget.RelativeLayout;
           import android.widget.TextView;
+          import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
           import androidx.annotation.NonNull;
           import androidx.appcompat.app.AppCompatActivity;
-          import org.mozilla.geckoview.GeckoResult;
           import org.mozilla.geckoview.GeckoRuntime;
           import org.mozilla.geckoview.GeckoRuntimeSettings;
           import org.mozilla.geckoview.GeckoSession;
           import org.mozilla.geckoview.GeckoSessionSettings;
           import org.mozilla.geckoview.GeckoView;
-
           public class MainActivity extends AppCompatActivity {
               private static final String TARGET_URL = "https://arena.ai";
               private static final String FALLBACK_URL = "https://arena.ai";
               private static final int MAX_RETRIES = 3;
               private static final long RETRY_DELAY = 2500L;
-              private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
-
+              
+              private SwipeRefreshLayout mSwipeRefreshLayout;
               private GeckoRuntime mRuntime;
               private GeckoSession mSession;
               private GeckoView mGeckoView;
               private ProgressBar mProgressBar;
               private RelativeLayout mErrorLayout;
               private TextView mErrorText;
-
+              
               private int mRetryCount = 0;
               private boolean mPageLoaded = false;
               private boolean mUsedFallback = false;
               private boolean mCanGoBack = false;
-
-              private GeckoSession.PromptDelegate.FilePrompt mCurrentFilePrompt;
+              
               private final Handler mHandler = new Handler(Looper.getMainLooper());
-
-              // Volume Key Zoom (manual)
-              private float mZoomFactor = 1.0f;
-
               @Override
               protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
-
-                  buildLayout();
-                  initGecko();
-                  loadTarget();
-
-                  // Welcome toasts (Bengali/English mix)
-                  new Handler(Looper.getMainLooper()).postDelayed(() ->
-                          android.widget.Toast.makeText(MainActivity.this,
-                                  "Phuck You BaBu!",
-                                  android.widget.Toast.LENGTH_LONG).show(), 3000);
-
-                  new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                      String businessMsg = "Welcome To The Business World.\nWhere the app was created by SrXSaladio7!";
-                      android.widget.Toast.makeText(MainActivity.this,
-                              businessMsg,
-                              android.widget.Toast.LENGTH_LONG).show();
-                  }, 4000);
+                 super.onCreate(savedInstanceState);
+                 supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
+                 
+                 buildLayout();
+                 initGecko();
+                 loadTarget();
+             // Feature 1: First welcome toast message at 3 seconds
+             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                 android.widget.Toast.makeText(MainActivity.this,
+                     "Phuck You BaBu!",
+                     android.widget.Toast.LENGTH_LONG).show();
+             }, 3000);
+             // Feature 1: Second credit toast message 1 second later (4s total)
+             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                 String businessMsg = "Welcome To The Business World.\nWhere the app was created by SrXSaladio7!";
+                 android.widget.Toast.makeText(MainActivity.this, 
+                     businessMsg,
+                     android.widget.Toast.LENGTH_LONG).show();
+             }, 4000); 
+          } 
+          
+          private void buildLayout() {
+               FrameLayout root = new FrameLayout(this);
+               root.setBackgroundColor(Color.BLACK);
+              mSwipeRefreshLayout = new SwipeRefreshLayout(this);
+              mSwipeRefreshLayout.setOnRefreshListener(() -> {
+                if (mSession != null) {
+                    mSession.reload();
               }
-
-              private void buildLayout() {
-                  FrameLayout root = new FrameLayout(this);
-                  root.setBackgroundColor(Color.BLACK);
-
-                      }
-                  });
-
-                  mGeckoView = new GeckoView(this);
-                  mGeckoView.setBackgroundColor(Color.BLACK);
-                                    
-                  
-                  ));
-
-                  mProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-                  mProgressBar.setMax(100);
-                  mProgressBar.setVisibility(View.GONE);
-                  FrameLayout.LayoutParams pbp = new FrameLayout.LayoutParams(
-                          FrameLayout.LayoutParams.MATCH_PARENT, 8);
-                  root.addView(mProgressBar, pbp);
-
-                  mErrorLayout = new RelativeLayout(this);
-                  mErrorLayout.setBackgroundColor(Color.BLACK);
-                  mErrorLayout.setVisibility(View.GONE);
-
-                  mErrorText = new TextView(this);
-                  mErrorText.setTextColor(Color.WHITE);
-                  mErrorText.setTextSize(16f);
-                  mErrorText.setPadding(48, 48, 48, 48);
-                  RelativeLayout.LayoutParams tvp = new RelativeLayout.LayoutParams(
-                          RelativeLayout.LayoutParams.WRAP_CONTENT,
-                          RelativeLayout.LayoutParams.WRAP_CONTENT
-                  );
-                  tvp.addRule(RelativeLayout.CENTER_IN_PARENT);
-                  mErrorLayout.addView(mErrorText, tvp);
-
-                  root.addView(mErrorLayout, new FrameLayout.LayoutParams(
-                          FrameLayout.LayoutParams.MATCH_PARENT,
-                          FrameLayout.LayoutParams.MATCH_PARENT
-                  ));
-
-                  // Native scroll thumb is provided by GeckoView – no custom buttons.
-                  setContentView(root);
-              }
-
+          });
+          mGeckoView = new GeckoView(this);
+          mGeckoView.setBackgroundColor(Color.BLACK);
+          mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> mGeckoView.canScrollVertically(-1));
+          
+          mSwipeRefreshLayout.addView(mGeckoView, new FrameLayout.LayoutParams(
+              FrameLayout.LayoutParams.MATCH_PARENT,
+              FrameLayout.LayoutParams.MATCH_PARENT
+          ));
+          root.addView(mSwipeRefreshLayout, new FrameLayout.LayoutParams(
+                  FrameLayout.LayoutParams.MATCH_PARENT,
+                  FrameLayout.LayoutParams.MATCH_PARENT
+          ));
+          mProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+          mProgressBar.setMax(100);
+          mProgressBar.setVisibility(View.GONE);
+          FrameLayout.LayoutParams pbp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, 8);
+          root.addView(mProgressBar, pbp);
+          mErrorLayout = new RelativeLayout(this);
+          mErrorLayout.setBackgroundColor(Color.BLACK);
+          mErrorLayout.setVisibility(View.GONE);
+          mErrorText = new TextView(this);
+          mErrorText.setTextColor(Color.WHITE);
+          mErrorText.setTextSize(16f);
+          mErrorText.setPadding(48, 48, 48, 48);
+          RelativeLayout.LayoutParams tvp = new RelativeLayout.LayoutParams(
+              RelativeLayout.LayoutParams.WRAP_CONTENT,
+              RelativeLayout.LayoutParams.WRAP_CONTENT
+          );
+          tvp.addRule(RelativeLayout.CENTER_IN_PARENT);
+          mErrorLayout.addView(mErrorText, tvp);
+          root.addView(mErrorLayout, new FrameLayout.LayoutParams(
+                  FrameLayout.LayoutParams.MATCH_PARENT,
+                  FrameLayout.LayoutParams.MATCH_PARENT
+           ));
+            setContentView(root);
+          }
               private void initGecko() {
                   GeckoRuntimeSettings runtimeSettings = new GeckoRuntimeSettings.Builder()
-                          .javaScriptEnabled(true)
-                          .remoteDebuggingEnabled(false)
-                          .consoleOutput(false)
-                          .build();
+                      .javaScriptEnabled(true)
+                      .remoteDebuggingEnabled(false)
+                      .consoleOutput(false)
+                      .build();
                   mRuntime = GeckoRuntime.create(this, runtimeSettings);
-
+                  
                   GeckoSessionSettings sessionSettings = new GeckoSessionSettings.Builder()
-                          .usePrivateMode(false)
-                          .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
-                          .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE)
-                          .userAgentOverride("Mozilla/5.0 (Android 5.1; Mobile; rv:109.0) Gecko/114.0 Firefox/114.0")
-                          .allowJavascript(true)
-                          .build();
+                      .usePrivateMode(false)
+                      .userAgentMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE)
+                      .viewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE)
+                      .userAgentOverride("Mozilla/5.0 (Android 5.1; Mobile; rv:109.0) Gecko/114.0 Firefox/114.0")
+                      .allowJavascript(true)
+                      .build();
                   mSession = new GeckoSession(sessionSettings);
-
-                  mGeckoView.setSession(mSession);
-
-                  // Prompt delegate for file upload (gallery)
-                  mSession.setPromptDelegate(new GeckoSession.PromptDelegate() {
-                      @Override
-                      public GeckoResult<PromptResponse> onFilePrompt(@NonNull GeckoSession session,
-                                                                      @NonNull FilePrompt prompt) {
-                          mCurrentFilePrompt = prompt;
-                          Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                          intent.addCategory(Intent.CATEGORY_OPENABLE);
-                          intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                          try {
-                              startActivityForResult(Intent.createChooser(intent, "Select Image"),
-                                      FILE_CHOOSER_REQUEST_CODE);
-                          } catch (Exception e) {
-                              mCurrentFilePrompt = null;
-                              return GeckoResult.fromValue(prompt.dismiss());
-                          }
-                          return null;
-                      }
-                  });
-
-                  // Progress delegate (shows loading bar and offline toast)
+                  mSession.getSettings().setUseTrackingProtection(false);
                   mSession.setProgressDelegate(new GeckoSession.ProgressDelegate() {
                       @Override
                       public void onPageStart(@NonNull GeckoSession session, @NonNull String url) {
@@ -396,11 +364,11 @@ jobs:
                               mProgressBar.setVisibility(View.VISIBLE);
                               mProgressBar.setProgress(10);
                           });
-                      }
-
+                     }
                       @Override
                       public void onPageStop(@NonNull GeckoSession session, boolean success) {
-                          mHandler.post(() -> {                           
+                          mHandler.post(() -> {
+                              mSwipeRefreshLayout.setRefreshing(false);
                               mProgressBar.setVisibility(View.GONE);
                               if (success) {
                                   mPageLoaded = true;
@@ -408,15 +376,15 @@ jobs:
                                   mErrorLayout.setVisibility(View.GONE);
                                   mGeckoView.setVisibility(View.VISIBLE);
                               } else {
-                                  // ********** NETWORK OFFLINE TOAST **********
+                                  // Feature 2: Network immediate disconnect alert message
                                   android.widget.Toast.makeText(MainActivity.this,
-                                          "Oh,ShiT! Net er dike chok maar, reconnecting...",
-                                          android.widget.Toast.LENGTH_LONG).show();
+                                     "Oh,ShiT! Net er dike chok maar, reconnecting...",
+                                     android.widget.Toast.LENGTH_LONG).show();
+                                 
                                   if (!mPageLoaded) scheduleRetry();
                               }
                           });
                       }
-
                       @Override
                       public void onProgressChange(@NonNull GeckoSession session, int progress) {
                           mHandler.post(() -> {
@@ -424,17 +392,14 @@ jobs:
                               mProgressBar.setVisibility(progress == 100 ? View.GONE : View.VISIBLE);
                           });
                       }
+                      
                   });
-
-                  // Navigation delegate (back history)
                   mSession.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
                       @Override
                       public void onCanGoBack(@NonNull GeckoSession session, boolean canGoBack) {
-                          mCanGoBack = canGoBack;
+                         mCanGoBack = canGoBack;
                       }
                   });
-
-                  // Content delegate (crash recovery)
                   mSession.setContentDelegate(new GeckoSession.ContentDelegate() {
                       @Override
                       public void onCrash(@NonNull GeckoSession session) {
@@ -445,45 +410,11 @@ jobs:
                           });
                       }
                   });
+                  
+                  mSession.open(mRuntime);
+                  mGeckoView.setSession(mSession);
               }
-
-              // ==== MANUAL ZOOM via JavaScript (only on Volume keys) ====
-              private void applyZoom() {
-                  if (mSession == null) return;
-                  String js = "javascript:(function() {" +
-                          "  var meta = document.querySelector('meta[name=viewport]');" +
-                          "  if (!meta) {" +
-                          "    meta = document.createElement('meta');" +
-                          "    meta.name = 'viewport';" +
-                          "    document.head.appendChild(meta);" +
-                          "  }" +
-                          "  meta.setAttribute('content', 'width=device-width, initial-scale=" + mZoomFactor + ", maximum-scale=" + mZoomFactor + ", user-scalable=yes');" +
-                          "})();";
-                  mSession.loadUri(js);
-              }
-
-              @Override
-              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-                  super.onActivityResult(requestCode, resultCode, data);
-                  if (requestCode == FILE_CHOOSER_REQUEST_CODE && mCurrentFilePrompt != null) {
-                      if (resultCode == RESULT_OK && data != null) {
-                          if (data.getClipData() != null) {
-                              int count = data.getClipData().getItemCount();
-                              Uri[] uris = new Uri[count];
-                              for (int i = 0; i < count; i++) {
-                                  uris[i] = data.getClipData().getItemAt(i).getUri();
-                              }
-                              mCurrentFilePrompt.confirm(this, uris);
-                          } else if (data.getData() != null) {
-                              mCurrentFilePrompt.confirm(this, data.getData());
-                          } else {
-                              mCurrentFilePrompt.dismiss();
-                          }
-                          mCurrentFilePrompt = null;
-                      }
-                  }
-              }
-
+              
               private void loadTarget() {
                   mPageLoaded = false;
                   mRetryCount = 0;
@@ -492,145 +423,100 @@ jobs:
                   mGeckoView.setVisibility(View.VISIBLE);
                   mSession.loadUri(TARGET_URL);
               }
-
-              // ==== RETRY LOGIC (with retry progress toasts) ====
+              
               private void scheduleRetry() {
                   if (mRetryCount >= MAX_RETRIES) {
                       if (!mUsedFallback) {
                           mUsedFallback = true;
                           mRetryCount = 0;
-                          showMessage("Trying arena.ai...");
+                          showMessage("Trying twitter.com...");
                           mHandler.postDelayed(() -> {
                               mErrorLayout.setVisibility(View.GONE);
                               mGeckoView.setVisibility(View.VISIBLE);
                               mSession.loadUri(FALLBACK_URL);
-                          }, 1500L);
-                      } else {
-                          showError("Could not connect.\nPlease check your internet and reopen the app.");
-                      }
-                      return;
+                           }, 1500L);
+                        } else {
+                            showError("Could not connect.\nPlease check your internet and reopen the app.");
                   }
-                  mRetryCount++;
-                  showMessage("Connection error. Retry " + mRetryCount + "/" + MAX_RETRIES + "...");
-                  mGeckoView.setVisibility(View.GONE);
-                  mHandler.postDelayed(() -> {
-                      if (!mPageLoaded) {
-                          mErrorLayout.setVisibility(View.GONE);
-                          mGeckoView.setVisibility(View.VISIBLE);
-                          mSession.reload();
-                      }
-                  }, RETRY_DELAY * mRetryCount);
+                  return;
               }
-
-              private void showMessage(String msg) {
-                  mErrorText.setText(msg);
-                  mErrorLayout.setVisibility(View.VISIBLE);
-              }
-
-              private void showError(String msg) {
-                  mErrorText.setText(msg);
-                  mErrorLayout.setVisibility(View.VISIBLE);
-                  mGeckoView.setVisibility(View.GONE);
-              }
-
-              @Override
-              protected void onDestroy() {
-                  mHandler.removeCallbacksAndMessages(null);
-                  if (mSession != null) mSession.close();
-                  if (mRuntime != null) mRuntime.shutdown();
-                  super.onDestroy();
-              }
-
-              // ==== DOUBLE‑BACK TO EXIT (with custom toast) ====
+              mRetryCount++;
+              showMessage("Connection error. Retry " + mRetryCount + "/" + MAX_RETRIES + "...");
+              mGeckoView.setVisibility(View.GONE);
+              mHandler.postDelayed(() -> {
+                  if (!mPageLoaded) {
+                      mErrorLayout.setVisibility(View.GONE);
+                      mGeckoView.setVisibility(View.VISIBLE);
+                      mSession.reload();
+                  }
+              }, RETRY_DELAY * mRetryCount);
+          }
+          private void showMessage(String msg) {
+              mErrorText.setText(msg);
+              mErrorLayout.setVisibility(View.VISIBLE);
+          }
+          private void showError(String msg) {
+              mErrorText.setText(msg);
+              mErrorLayout.setVisibility(View.VISIBLE);
+              mGeckoView.setVisibility(View.GONE);
+          }
+          @Override
+          protected void onDestroy() {
+              mHandler.removeCallbacksAndMessages(null);
+              if (mSession != null) mSession.close();
+              if (mRuntime != null) mRuntime.shutdown();
+              super.onDestroy();
+          }
               private boolean doubleBackToExitPressedOnce = false;
-
+              // Feature 3: Verified double-press Back button custom exit dialog layout
               @Override
               public void onBackPressed() {
                   if (mSession != null && mCanGoBack) {
                       mSession.goBack();
                       return;
                   }
-
                   if (doubleBackToExitPressedOnce) {
                       finish();
                       System.exit(0);
                       return;
                   }
-
-                  doubleBackToExitPressedOnce = true;
-                  android.widget.Toast.makeText(this, "Are You Sure,You Want to do baaLFeLai?",
-                          android.widget.Toast.LENGTH_SHORT).show();
-
-                  new Handler(Looper.getMainLooper()).postDelayed(() ->
-                          doubleBackToExitPressedOnce = false, 2000);
+                  this.doubleBackToExitPressedOnce = true;
+                  android.widget.Toast.makeText(this, "Are You Sure,You Want to do baaLFeLai?", android.widget.Toast.LENGTH_SHORT).show();
+                  new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                      doubleBackToExitPressedOnce = false;
+                  }, 2000);
               }
-
-              // ==== SCREEN‑OFF AUTO‑EXIT ====
-              @Override
-              protected void onStop() {
-                  super.onStop();
-                  android.os.PowerManager pm = (android.os.PowerManager)
-                          getSystemService(android.content.Context.POWER_SERVICE);
-                  boolean isScreenOn;
-                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH) {
-                      isScreenOn = pm.isInteractive();
-                  } else {
-                      isScreenOn = pm.isScreenOn();
-                  }
-                  if (!isScreenOn) {
-                      finish();
-                      System.exit(0);
-                  }
+          // Feature 4: Screen hardware off / background tracking shutdown handler
+          @Override
+          protected void onStop() {
+              super.onStop();
+              android.os.PowerManager pm = (android.os.PowerManager) getSystemService(android.content.Context.POWER_SERVICE);
+              boolean isScreenOn = true;
+              
+              if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH) {
+                  isScreenOn = pm.isInteractive();
+              } else {
+                  isScreenOn = pm.isScreenOn();
               }
-
-              // ==== KEY EVENTS: Back + Volume Zoom ====
+              if (!isScreenOn) {
+                  finish();
+                  System.exit(0);
+              }
+          }
+          
               @Override
               public boolean onKeyDown(int keyCode, KeyEvent event) {
-                  // Back button (history navigation)
                   if (keyCode == KeyEvent.KEYCODE_BACK) {
-                      if (mSession != null && mCanGoBack) {
+                      if (mSession != null && mCanGoBack) {;
                           return true;
                       }
                   }
-
-                  // Volume Up – increase zoom (max 1.8)
-                  if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                      if (mZoomFactor < 1.8f) {
-                          mZoomFactor += 0.05f;
-                          if (mZoomFactor > 1.8f) mZoomFactor = 1.8f;
-                          applyZoom();
-                          showZoomToast();
-                      } else {
-                          android.widget.Toast.makeText(this, "Max zoom reached (1.80x)", android.widget.Toast.LENGTH_SHORT).show();
-                      }
-                      return true;
-                  }
-
-                  // Volume Down – decrease zoom (min 0.5)
-                  if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                      if (mZoomFactor > 0.5f) {
-                          mZoomFactor -= 0.05f;
-                          if (mZoomFactor < 0.5f) mZoomFactor = 0.5f;
-                          applyZoom();
-                          showZoomToast();
-                      } else {
-                          android.widget.Toast.makeText(this, "Min zoom reached (0.50x)", android.widget.Toast.LENGTH_SHORT).show();
-                      }
-                      return true;
-                  }
-
                   return super.onKeyDown(keyCode, event);
-              }
-
-              private void showZoomToast() {
-                  String msg = "Zoom: " + String.format("%.2f", mZoomFactor) + "x";
-                  android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show();
               }
           }
           EOF
-
       # ------------------------------------------------------------
-      # 7. Resources
+      # 7. Resources (strings, styles, network config)
       # ------------------------------------------------------------
       - name: Write strings.xml
         run: |
@@ -640,7 +526,6 @@ jobs:
               <string name="app_name">xAi</string>
           </resources>
           EOF
-
       - name: Write styles.xml
         run: |
           cat > app/src/main/res/values/styles.xml << 'EOF'
@@ -648,13 +533,13 @@ jobs:
           <resources>
               <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
                   <item name="android:windowBackground">#000000</item>
+                  
                   <item name="android:windowNoTitle">true</item>
                   <item name="android:statusBarColor">#000000</item>
                   <item name="android:navigationBarColor">#000000</item>
               </style>
           </resources>
           EOF
-
       - name: Write network_security_config.xml
         run: |
           cat > app/src/main/res/xml/network_security_config.xml << 'EOF'
@@ -668,9 +553,8 @@ jobs:
               </base-config>
           </network-security-config>
           EOF
-
       # ------------------------------------------------------------
-      # 8. Gradle wrapper
+      # 8. Gradle wrapper (with verification)
       # ------------------------------------------------------------
       - name: Install Gradle 8.4
         uses: gradle/actions/setup-gradle@v3
@@ -681,7 +565,7 @@ jobs:
         run: gradle --version
 
       # ------------------------------------------------------------
-      # 9. Keystore
+      # 9. Generate keystore
       # ------------------------------------------------------------
       - name: Generate Keystore
         run: |
@@ -696,9 +580,8 @@ jobs:
             -keypass xai_key_pass \
             -dname "CN=xAi, OU=Dev, O=bappa, L=City, ST=State, C=US" \
             -noprompt
-
       # ------------------------------------------------------------
-      # 10. Build
+      # 10. Build and verify
       # ------------------------------------------------------------
       - name: Build Release APK
         run: |
@@ -709,11 +592,9 @@ jobs:
         run: |
            echo "===== missing_rules.txt ====="
            cat app/build/outputs/mapping/release/missing_rules.txt || echo "File not found"
-
       - name: Show dependency tree
         run: |
           gradle app:dependencies --configuration releaseRuntimeClasspath
-
       - name: Show proguard-rules.pro
         run: |
          echo "===== proguard-rules.pro ====="
@@ -741,7 +622,6 @@ jobs:
            echo "✅ APK size looks good."
            echo "=== Native libraries in APK ==="
            unzip -l "$APK_PATH" | grep -E 'lib/.*\.so' || echo "No .so files found!"
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
