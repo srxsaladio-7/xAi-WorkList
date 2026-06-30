@@ -163,7 +163,6 @@ jobs:
             }
 
             implementation 'androidx.appcompat:appcompat:1.6.1'
-            implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
             implementation 'androidx.core:core:1.12.0'
             implementation 'androidx.core:core-ktx:1.12.0'     
             implementation 'androidx.multidex:multidex:2.0.1'
@@ -250,7 +249,6 @@ jobs:
           import android.widget.TextView;
           import androidx.annotation.NonNull;
           import androidx.appcompat.app.AppCompatActivity;
-          import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
           import org.mozilla.geckoview.GeckoResult;
           import org.mozilla.geckoview.GeckoRuntime;
           import org.mozilla.geckoview.GeckoRuntimeSettings;
@@ -265,7 +263,6 @@ jobs:
               private static final long RETRY_DELAY = 2500L;
               private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
 
-              private SwipeRefreshLayout mSwipeRefreshLayout;
               private GeckoRuntime mRuntime;
               private GeckoSession mSession;
               private GeckoView mGeckoView;
@@ -311,26 +308,13 @@ jobs:
                   FrameLayout root = new FrameLayout(this);
                   root.setBackgroundColor(Color.BLACK);
 
-                  mSwipeRefreshLayout = new SwipeRefreshLayout(this);
-                  mSwipeRefreshLayout.setOnRefreshListener(() -> {
-                      if (mSession != null) {
-                          mSession.reload();
                       }
                   });
 
                   mGeckoView = new GeckoView(this);
                   mGeckoView.setBackgroundColor(Color.BLACK);
-                  mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
-                          mGeckoView.canScrollVertically(-1));
-
-                  mSwipeRefreshLayout.addView(mGeckoView, new FrameLayout.LayoutParams(
-                          FrameLayout.LayoutParams.MATCH_PARENT,
-                          FrameLayout.LayoutParams.MATCH_PARENT
-                  ));
-
-                  root.addView(mSwipeRefreshLayout, new FrameLayout.LayoutParams(
-                          FrameLayout.LayoutParams.MATCH_PARENT,
-                          FrameLayout.LayoutParams.MATCH_PARENT
+                                    
+                  
                   ));
 
                   mProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -416,8 +400,7 @@ jobs:
 
                       @Override
                       public void onPageStop(@NonNull GeckoSession session, boolean success) {
-                          mHandler.post(() -> {
-                              mSwipeRefreshLayout.setRefreshing(false);
+                          mHandler.post(() -> {                           
                               mProgressBar.setVisibility(View.GONE);
                               if (success) {
                                   mPageLoaded = true;
