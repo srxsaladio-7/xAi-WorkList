@@ -269,6 +269,7 @@ jobs:
               private boolean mPageLoaded = false;
               private boolean mUsedFallback = false;
               private boolean mCanGoBack = false;
+              private float mZoom = 1.0f;
               
               private final Handler mHandler = new Handler(Looper.getMainLooper());
               @Override
@@ -506,6 +507,42 @@ jobs:
           
               @Override
               public boolean onKeyDown(int keyCode, KeyEvent event) {
+                  if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                      if (mZoom < 1.5f) {
+                          mZoom += 0.1f;
+                      }
+
+                      mSession.evaluateJS(
+                          "document.body.style.zoom='" + mZoom + "';"
+                      };
+
+                      android.widget.Toast.makeText(
+                              this,
+                              "Zoom " + (int)(mZoom * 100) + "%",
+                              android.widget.Toast.LENGTH_SHORT
+                      ).show();
+
+                      return true;
+                  }
+
+                  if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                      if (mZoom > 0.6f) {
+                          mZoom -= 0.1f;
+                      }
+
+                      mSession.evaluateJS(
+                          "document.body.style.zoom='" + mZoom + "';"
+                      );
+
+                      android.widget.Toast.makeText(
+                              this,
+                              "Zoom " + (int)(mZoom * 100) + "%",
+                              android.widget.Toast.LENGTH_SHORT
+                      ).show();
+
+                      return true;
+                  }
+                  
                   if (keyCode == KeyEvent.KEYCODE_BACK) {
                       if (mSession != null && mCanGoBack) {;
                           return true;
