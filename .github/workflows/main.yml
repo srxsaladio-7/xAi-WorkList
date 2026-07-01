@@ -188,6 +188,7 @@ jobs:
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
             <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
             <application
                 android:name="androidx.multidex.MultiDexApplication"
                 android:allowBackup="false"
@@ -250,6 +251,19 @@ jobs:
           import org.mozilla.geckoview.GeckoSession;
           import org.mozilla.geckoview.GeckoSessionSettings;
           import org.mozilla.geckoview.GeckoView;
+          import android.app.DownloadManager;
+          import android.net.Uri;
+          import android.os.Environment;
+          import android.webkit.URLUtil;
+
+          import org.mozilla.geckoview.WebResponse;
+          import android.content.Intent;
+
+          import androidx.activity.result.ActivityResultLauncher;
+          import androidx.activity.result.contract.ActivityResultContracts;
+
+          import org.mozilla.geckoview.GeckoResult;
+          
           public class MainActivity extends AppCompatActivity {
               private static final String TARGET_URL = "https://arena.ai";
               private static final String FALLBACK_URL = "https://arena.ai";
@@ -268,12 +282,27 @@ jobs:
               private boolean mPageLoaded = false;
               private boolean mUsedFallback = false;
               private boolean mCanGoBack = false;
-              
-              
+              private ActivityResultLauncher<String[]> mOpenSingleFileLauncher;
+              private ActivityResultLauncher<String[]> mOpenMultipleFilesLauncher;
+
+              private GeckoSession.PromptDelegate.FilePrompt mPendingFilePrompt;
+              private GeckoResult<GeckoSession.PromptDelegate.PromptResponse> mPendingFileResult;
+                                        
               private final Handler mHandler = new Handler(Looper.getMainLooper());
+              
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                  super.onCreate(savedInstanceState);
+                 mOpenSingleFileLauncher = registerForActivityResult(
+                         new ActivityResultContracts.OpenDocument(),
+                         uri -> handleFileResult(uri == null ? null : new Uri[]{uri})
+                 );
+
+                 mOpenMultipleFilesLauncher = registerForActivityResult(
+                         new ActivityResultContracts.OpenMultipleDocuments(),
+                         uris -> handleFileResult(uris == null ? null : uris.toArray(new Uri[0]))
+                 );
+                                  
                  supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
                  
                  buildLayout();
@@ -339,11 +368,11 @@ jobs:
                       .remoteDebuggingEnabled(false)
                       .consoleOutput(false)
 
-                      // Global text size (90%)
-                      .fontSizeFactor(0.90f)
+                      // Global text size (95%)
+                      .fontSizeFactor(0.95f)
 
                       // Slightly zoom the whole page out
-                      .displayDensityOverride(0.90f)
+                      .displayDensityOverride(0.95f)
                       
                       .build();
                   mRuntime = GeckoRuntime.create(this, runtimeSettings);
@@ -356,7 +385,32 @@ jobs:
                       .allowJavascript(true)
                       .build();
                   mSession = new GeckoSession(sessionSettings);
+                  mSession = new GeckoSession(sessionSettings);
+                  mSession.setPromptDelegate(new GeckoSession.PromptDelegate() {
+                      @Override
+                      public GeckoResult<GeckoSession.PromptDelegate.PromptResponse> onFilePrompt(
+                              @NonNull GeckoSession session,
+                              @NonNull GeckoSession.PromptDelegate.FilePrompt prompt) {
+                              
+                         mPendingFilePrompt = prompt;
+                         mPendingFileResult = new GeckoResult<>();
+
+                         String[] mimeTypes = (prompt.mimeTypes != null && prompt.mimeTypes.length > 0)
+                                ? prompt.mimeTypes
+                                : new String[]{"*/*"};
+                                
+                         if (prompt.type == GeckoSession.PromptDelegate.FilePrompt.Type.MULTIPLE) {
+                             mOpenMultipleFilesLauncher.launch(mimeTypes);
+                         } else {
+                            mOpenSingleFileLauncher.launch(mimeTypes);
+                         }
+
+                         return mPendingFileResult;
+                      }
+                  });                  
+                  
                   mSession.getSettings().setUseTrackingProtection(false);
+                  
                   mSession.setProgressDelegate(new GeckoSession.ProgressDelegate() {
                       @Override
                       public void onPageStart(@NonNull GeckoSession session, @NonNull String url) {
@@ -409,6 +463,38 @@ jobs:
                               loadTarget();
                           });
                       }
+
+                     @Override
+                     public void onExternalResponse(
+                             @NonNull GeckoSession session,
+                             @NonNull WebResponse response) {
+               
+                        DownloadManager.Request request =
+                                new DownloadManager.Request(Uri.parse(response.uri));                     
+                        
+                        request.setNotificationVisibility(
+                                DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+
+                         request.setDestinationInExternalPublicDir(
+                                 Environment.DIRECTORY_DOWNLOADS,
+                                 URLUtil.guessFileName(
+                                         response.uri,
+                                         null,
+                                         null));
+                          DownloadManager dm =
+                                  (DownloadManager)getSystemService(DOWNLOAD_SERVICE);
+                          
+                          if (dm != null) {
+                              dm.enqueue(request);
+            
+                              runOnUiThread(() ->
+                                     android.widget.Toast.makeText(
+                                             MainActivity.this,
+                                             "Downloading...",
+                                             android.widget.Toast.LENGTH_SHORT
+                                     ).show());
+                          }           
+                      }
                   });
                   
                   mSession.open(mRuntime);
@@ -451,6 +537,40 @@ jobs:
                   }
               }, RETRY_DELAY * mRetryCount);
           }
+          private void handleFileResult(Uri[] uris) {
+              if (mPendingFilePrompt == null || mPendingFileResult == null) {
+                  return;
+              }
+
+              if (uris != null && uris.length > 0) {
+
+                  for (Uri uri : uris) {
+                      try {
+                          getContentResolver().takePersistableUriPermission(
+                                  uri,
+                                  Intent.FLAG_GRANT_READ_URI_PERMISSION
+                          );        
+                      } catch (Exception ignored) {
+                      }
+                  }
+                  
+                  if (uris.length == 1) {
+                      mPendingFileResult.complete(
+                              mPendingFilePrompt.confirm(getApplicationContext(), uris[0])
+                      );
+                      } else {
+                         mPendingFileResult.complete(
+                                 mPendingFilePrompt.confirm(getApplicationContext(), uris)
+                         );
+                      }
+                  } else {
+                      mPendingFileResult.complete(mPendingFilePrompt.dismiss());
+                  }
+
+                  mPendingFilePrompt = null;
+                  mPendingFileResult = null;
+              }
+                         
           private void showMessage(String msg) {
               mErrorText.setText(msg);
               mErrorLayout.setVisibility(View.VISIBLE);
