@@ -552,10 +552,24 @@ jobs:
                       return source;
                   }
 
+                  String extension = "";
+
+                  String type = getContentResolver().getType(source);
+
+                  if (type != null) {
+                      extension = android.webkit.MimeTypeMap
+                              .getSingleton()
+                              .getExtensionFromMimeType(type);
+                  }
+
+                  if (extension == null || extension.isEmpty()) {
+                      extension = "bin";
+                  }
+
                   File file = new File(
                           getCacheDir(),
-                          "upload_" + System.currentTimeMillis()
-                  );
+                          "upload_" + System.currentTimeMillis() + "." + extension
+                  );        
 
                   OutputStream out =
                           new FileOutputStream(file);
