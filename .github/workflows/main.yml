@@ -308,7 +308,7 @@ jobs:
                        )
                );        
 
-          ));
+
           mProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
           mProgressBar.setMax(100);
           mProgressBar.setVisibility(View.GONE);
