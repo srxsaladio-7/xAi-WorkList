@@ -243,7 +243,6 @@ jobs:
           import android.widget.ProgressBar;
           import android.widget.RelativeLayout;
           import android.widget.TextView;
-          import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
           import androidx.annotation.NonNull;
           import androidx.appcompat.app.AppCompatActivity;
           import org.mozilla.geckoview.GeckoRuntime;
@@ -256,8 +255,8 @@ jobs:
               private static final String FALLBACK_URL = "https://arena.ai";
               private static final int MAX_RETRIES = 3;
               private static final long RETRY_DELAY = 2500L;
+
               
-              private SwipeRefreshLayout mSwipeRefreshLayout;
               private GeckoRuntime mRuntime;
               private GeckoSession mSession;
               private GeckoView mGeckoView;
@@ -298,23 +297,17 @@ jobs:
           private void buildLayout() {
                FrameLayout root = new FrameLayout(this);
                root.setBackgroundColor(Color.BLACK);
-              mSwipeRefreshLayout = new SwipeRefreshLayout(this);
-              mSwipeRefreshLayout.setOnRefreshListener(() -> {
-                if (mSession != null) {
-                    mSession.reload();
-              }
-          });
-          mGeckoView = new GeckoView(this);
-          mGeckoView.setBackgroundColor(Color.BLACK);
-          mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> mGeckoView.canScrollVertically(-1));
-          
-          mSwipeRefreshLayout.addView(mGeckoView, new FrameLayout.LayoutParams(
-              FrameLayout.LayoutParams.MATCH_PARENT,
-              FrameLayout.LayoutParams.MATCH_PARENT
-          ));
-          root.addView(mSwipeRefreshLayout, new FrameLayout.LayoutParams(
-                  FrameLayout.LayoutParams.MATCH_PARENT,
-                  FrameLayout.LayoutParams.MATCH_PARENT
+               mGeckoView = new GeckoView(this);
+               mGeckoView.setBackgroundColor(Color.BLACK);
+
+               root.addView(
+                       mGeckoView,
+                       new FrameLayout.LayoutParams(
+                               FrameLayout.LayoutParams.MATCH_PARENT,
+                               FrameLayout.LayoutParams.MATCH_PARENT
+                       )
+               );        
+
           ));
           mProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
           mProgressBar.setMax(100);
@@ -369,7 +362,6 @@ jobs:
                       @Override
                       public void onPageStop(@NonNull GeckoSession session, boolean success) {
                           mHandler.post(() -> {
-                              mSwipeRefreshLayout.setRefreshing(false);
                               mProgressBar.setVisibility(View.GONE);
                               if (success) {
                                   mPageLoaded = true;
