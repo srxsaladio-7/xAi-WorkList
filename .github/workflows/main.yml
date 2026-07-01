@@ -506,7 +506,7 @@ jobs:
 
                       mSession.evaluateJS(
                           "document.body.style.zoom='" + mZoom + "';"
-                      };
+                      );
 
                       android.widget.Toast.makeText(
                               this,
@@ -536,7 +536,7 @@ jobs:
                   }
                   
                   if (keyCode == KeyEvent.KEYCODE_BACK) {
-                      if (mSession != null && mCanGoBack) {;
+                      if (mSession != null && mCanGoBack) {
                           return true;
                       }
                   }
