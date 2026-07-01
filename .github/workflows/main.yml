@@ -268,7 +268,7 @@ jobs:
               private boolean mPageLoaded = false;
               private boolean mUsedFallback = false;
               private boolean mCanGoBack = false;
-              private float mZoom = 1.0f;
+              
               
               private final Handler mHandler = new Handler(Looper.getMainLooper());
               @Override
@@ -282,7 +282,7 @@ jobs:
              // Feature 1: First welcome toast message at 3 seconds
              new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                  android.widget.Toast.makeText(MainActivity.this,
-                     "Phuck You BaBu!",
+                     "Screw You BaBeS!",
                      android.widget.Toast.LENGTH_LONG).show();
              }, 3000);
              // Feature 1: Second credit toast message 1 second later (4s total)
@@ -338,6 +338,13 @@ jobs:
                       .javaScriptEnabled(true)
                       .remoteDebuggingEnabled(false)
                       .consoleOutput(false)
+
+                      // Global text size (90%)
+                      .fontSizeFactor(0.90f)
+
+                      // Slightly zoom the whole page out
+                      .displayDensityOverride(0.90f)
+                      
                       .build();
                   mRuntime = GeckoRuntime.create(this, runtimeSettings);
                   
@@ -499,42 +506,6 @@ jobs:
           
               @Override
               public boolean onKeyDown(int keyCode, KeyEvent event) {
-                  if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                      if (mZoom < 1.5f) {
-                          mZoom += 0.1f;
-                      }
-
-                      mSession.evaluateJS(
-                          "document.body.style.zoom='" + mZoom + "';"
-                      );
-
-                      android.widget.Toast.makeText(
-                              this,
-                              "Zoom " + (int)(mZoom * 100) + "%",
-                              android.widget.Toast.LENGTH_SHORT
-                      ).show();
-
-                      return true;
-                  }
-
-                  if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                      if (mZoom > 0.6f) {
-                          mZoom -= 0.1f;
-                      }
-
-                      mSession.evaluateJS(
-                          "document.body.style.zoom='" + mZoom + "';"
-                      );
-
-                      android.widget.Toast.makeText(
-                              this,
-                              "Zoom " + (int)(mZoom * 100) + "%",
-                              android.widget.Toast.LENGTH_SHORT
-                      ).show();
-
-                      return true;
-                  }
-                  
                   if (keyCode == KeyEvent.KEYCODE_BACK) {
                       if (mSession != null && mCanGoBack) {
                           return true;
