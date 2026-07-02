@@ -373,11 +373,11 @@ jobs:
                       .remoteDebuggingEnabled(false)
                       .consoleOutput(false)
 
-                      // Global text size (145%)
-                      .fontSizeFactor(1.45f)
+                      // Global text size (95%)
+                      .fontSizeFactor(0.95f)
 
                       // Slightly zoom the whole page out
-                      .displayDensityOverride(0.95f)
+                      .displayDensityOverride(1.05f)
                       
                       .build();
                   mRuntime = GeckoRuntime.create(this, runtimeSettings);
