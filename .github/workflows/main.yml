@@ -389,7 +389,7 @@ jobs:
                       .userAgentOverride("Mozilla/5.0 (Android 5.1; Mobile; rv:109.0) Gecko/114.0 Firefox/114.0")
                       .allowJavascript(true)
                       .build();
-                  mSession = new GeckoSession(sessionSettings);
+
                   mSession = new GeckoSession(sessionSettings);
                   mSession.setPromptDelegate(new GeckoSession.PromptDelegate() {
                       @Override
